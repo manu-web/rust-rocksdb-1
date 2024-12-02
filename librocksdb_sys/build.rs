@@ -28,7 +28,7 @@ const NO_JEMALLOC_TARGETS: &[&str] = &["android", "dragonfly", "musl", "darwin"]
 fn bindgen_lib(out_file: &Path) {
     let bindings = bindgen::Builder::default()
         .header("crocksdb/crocksdb/c.h")
-        .header("wotr/c.h")
+        .header("rocksdb/wotr/c.h")
         .ctypes_prefix("libc")
         .generate()
         .expect("unable to generate bindings");
@@ -60,11 +60,11 @@ fn main() {
 
     println!("cargo:rerun-if-changed=crocksdb/crocksdb/c.h");
     println!("cargo:rerun-if-changed=crocksdb/c.cc");
-    println!("cargo:rerun-if-changed=wotr/c.h");
-    println!("cargo:rerun-if-changed=wotr/c.cc");
+    println!("cargo:rerun-if-changed=rocksdb/wotr/c.h");
+    println!("cargo:rerun-if-changed=rocksdb/wotr/c.cc");
 
     build.cpp(true).file("crocksdb/c.cc");
-    build.cpp(true).file("wotr/c.cc");
+    build.cpp(true).file("rocksdb/wotr/c.cc");
     if !cfg!(target_os = "windows") {
         build.flag("-std=c++11");
         build.flag("-fno-rtti");
@@ -94,13 +94,13 @@ fn figure_link_lib(dst: &Path, name: &str) {
 
 fn build_wotr(build: &mut Build) {
     let cur_dir = std::env::current_dir().unwrap();
-    let mut cfg = Config::new("wotr");
+    let mut cfg = Config::new("rocksdb/wotr");
     let dst = cfg
         .build_target("wotr")
         .very_verbose(true)
         .build();
     figure_link_lib(&dst, "wotr");
-    build.include(cur_dir.join("wotr"));
+    build.include(cur_dir.join("rocksdb").join("wotr"));
     println!("cargo:rustc-link-search=native={}", dst.display());
 }
 
@@ -110,7 +110,7 @@ fn build_titan(build: &mut Build) {
     configure_common_rocksdb_args(&mut cfg, "titan");
     let dst = cfg
         .define("ROCKSDB_DIR", cur_dir.join("rocksdb"))
-        .define("WOTR_DIR", cur_dir.join("wotr"))
+        .define("WOTR_DIR", cur_dir.join("rocksdb").join("wotr"))
         .define("WITH_TITAN_TESTS", "OFF")
         .define("WITH_TITAN_TOOLS", "OFF")
         .build_target("titan")
