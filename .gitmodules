@@ -1,3 +1,6 @@
 [submodule "librocksdb_sys/rocksdb"]
 	path = librocksdb_sys/rocksdb
 	url = https://github.com/manu-web/rocksdb-1
+[submodule "librocksdb_sys/wotr"]
+	path = librocksdb_sys/wotr
+	url = https://github.com/manu-web/wotr
