@@ -1087,6 +1087,17 @@ extern "C" {
         valLen: *const size_t,
         err: *mut *mut c_char,
     ) -> *mut u8;
+    pub fn crocksdb_get_external_range_query(
+        db: *const DBInstance,
+        readopts: *const DBReadOptions,
+        cf_handle: *mut DBCFHandle,
+        start_key: *const u8,
+        start_key_len: size_t,
+        end_key: *const u8,
+        end_key_len: size_t,
+        num_elements: *mut size_t,
+        err: *mut *mut c_char,
+    ) -> *mut *mut DBPinnableSlice;
     pub fn crocksdb_create_iterator(
         db: *mut DBInstance,
         readopts: *const DBReadOptions,

@@ -460,6 +460,12 @@ extern C_ROCKSDB_LIBRARY_API void crocksdb_multi_get_cf(
     const size_t* keys_list_sizes, char** values_list,
     size_t* values_list_sizes, char** errs);
 
+extern C_ROCKSDB_LIBRARY_API crocksdb_pinnableslice_t** crocksdb_get_external_range_query(
+    crocksdb_t* db, const crocksdb_readoptions_t* options,
+    const crocksdb_column_family_handle_t* const* column_families,
+    const char* start_key, size_t start_keylen, const char* end_key,
+    size_t end_keylen, size_t *num_elements, char** errs);
+
 extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* crocksdb_create_iterator(
     crocksdb_t* db, const crocksdb_readoptions_t* options);
 

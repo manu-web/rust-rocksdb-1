@@ -1015,6 +1015,38 @@ impl DB {
         self.get_cf_opt(cf, key, &ReadOptions::new())
     }
 
+    pub fn get_external_range_query(&self, cf: &CFHandle, start_key: &[u8], end_key: &[u8],readopts: &ReadOptions) ->Result<Option<Vec<DBVector>>, String> {
+        unsafe {
+            let mut num_elements: size_t = 0;
+            let result: *mut *mut DBPinnableSlice = ffi_try!(crocksdb_get_external_range_query(
+                self.inner,
+                readopts.get_inner(),
+                cf.inner,
+                start_key.as_ptr(),
+                start_key.len() as size_t,
+                end_key.as_ptr(),
+                end_key.len() as size_t,
+                &mut num_elements
+            ));
+            if result.is_null() {
+                Ok(None)
+            } else {
+                let mut db_vectors = Vec::with_capacity(num_elements);
+                let mut current_ptr = result;
+
+                for _ in 0..num_elements {
+                    let slice_ptr = *current_ptr;
+                    if !slice_ptr.is_null() {
+                        db_vectors.push(DBVector::from_pinned_slice(slice_ptr));
+                    }
+                    current_ptr = current_ptr.add(1); 
+                }
+
+                Ok(Some(db_vectors))     
+            }
+        }
+    }
+
     pub fn create_cf<'a, T>(&mut self, cfd: T) -> Result<&CFHandle, String>
     where
         T: Into<ColumnFamilyDescriptor<'a>>,
