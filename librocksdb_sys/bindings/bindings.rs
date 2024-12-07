@@ -1140,7 +1140,7 @@ extern "C" {
     pub fn crocksdb_get_external_range_query(
         db: *mut crocksdb_t,
         options: *const crocksdb_readoptions_t,
-        column_families: *const *const crocksdb_column_family_handle_t,
+        column_families: *mut crocksdb_column_family_handle_t,
         start_key: *const libc::c_char,
         start_keylen: usize,
         end_key: *const libc::c_char,

@@ -1332,13 +1332,13 @@ void crocksdb_multi_get_cf(
 
 crocksdb_pinnableslice_t** crocksdb_get_external_range_query(
     crocksdb_t* db, const crocksdb_readoptions_t* options,
-    const crocksdb_column_family_handle_t* const* column_families,
+    crocksdb_column_family_handle_t* column_family,
     const char* start_key, size_t start_keylen, const char* end_key, size_t end_keylen, size_t *num_elements, char** errs) {
 
     std::vector<PinnableSlice*> values_vec;
     crocksdb_pinnableslice_t** values;
 
-    Status s = db->rep->GetExternalRangeQuery(options->rep, db->rep->DefaultColumnFamily(), Slice(start_key, start_keylen), Slice(end_key, end_keylen), values_vec);
+    Status s = db->rep->GetExternalRangeQuery(options->rep, column_family->rep, Slice(start_key, start_keylen), Slice(end_key, end_keylen), values_vec);
   
     //TODO : Vectorize status 
     if (!s.ok()) {
@@ -1352,6 +1352,7 @@ crocksdb_pinnableslice_t** crocksdb_get_external_range_query(
     } 
 
     values = new crocksdb_pinnableslice_t*[values_vec.size()];
+    *num_elements = values_vec.size();
 
     for (size_t i = 0; i < values_vec.size(); i++) {
       crocksdb_pinnableslice_t* v = new (crocksdb_pinnableslice_t);
@@ -1359,11 +1360,9 @@ crocksdb_pinnableslice_t** crocksdb_get_external_range_query(
       // values[i] = v;
       new (&v->rep) PinnableSlice(std::move(*values_vec[i]));  // Ensure this doesn't call the deleted copy assignment operator
       values[i] = v;
-      values_vec[i]->~PinnableSlice();
+      // values_vec[i]->~PinnableSlice();
       delete values_vec[i];
     }
-
-    *num_elements = values_vec.size();
 
     return values; 
 }

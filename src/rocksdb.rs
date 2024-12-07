@@ -1016,6 +1016,13 @@ impl DB {
     }
 
     pub fn get_external_range_query(&self, cf: &CFHandle, start_key: &[u8], end_key: &[u8],readopts: &ReadOptions) ->Result<Option<Vec<DBVector>>, String> {
+
+        println!(
+            "get_external_range_query called with start_key: {:?}, end_key: {:?}",
+            std::str::from_utf8(start_key).unwrap_or("[invalid UTF-8]"),
+            std::str::from_utf8(end_key).unwrap_or("[invalid UTF-8]")
+        );
+
         unsafe {
             let mut num_elements: size_t = 0;
             let result: *mut *mut DBPinnableSlice = ffi_try!(crocksdb_get_external_range_query(
@@ -1028,7 +1035,10 @@ impl DB {
                 end_key.len() as size_t,
                 &mut num_elements
             ));
+
+            println!("Number of elements returned: {}", num_elements);
             if result.is_null() {
+                println!("Result from crocksdb function is null");
                 Ok(None)
             } else {
                 let mut db_vectors = Vec::with_capacity(num_elements);
@@ -3261,6 +3271,77 @@ mod test {
 
             let r = db.get_external(b"k1", &ReadOptions::new());
             assert!(r.unwrap().unwrap().to_utf8().unwrap() == "v1111");
+        }
+    }
+
+    #[test]
+    fn test_range_query_with_get_external_range_query() {
+        let path = tempdir_with_prefix("_rust_rocksdb_test_range_query");
+        let pathstr = path.path().to_str().unwrap();
+        
+        println!("Temporary database path: {}", pathstr);
+
+        let mut opts = DBOptions::new();
+        opts.create_if_missing(true);
+
+        println!("Setting up the database...");
+
+        let mut db = DB::open_default(pathstr).unwrap();
+        let _ = db.create_cf("cf1").unwrap();
+
+        let logpath = setup_wotr_logpath(&path, "wotrlog_test_rw");
+        let w = WOTR::wotr_init(&logpath).unwrap();
+        assert!(db.set_wotr(&w, false).is_ok());
+
+        let wb = WriteBatch::new();
+        let cf1 = db.cf_handle("cf1").unwrap();
+
+        let _ = wb.put_cf(cf1, b"k1", b"v1");
+        let _ = wb.put_cf(cf1, b"k2", b"v2");
+        let _ = wb.put_cf(cf1, b"k3", b"v3");
+        let _ = wb.put_cf(cf1, b"k4", b"v4");
+        let _ = wb.put_cf(cf1, b"k5", b"v5");
+
+        let offsets = db.write_wotr(&wb, &WriteOptions::new()).unwrap();
+
+        assert!(offsets.len() == 5);
+        assert!(offsets[1] != 0);
+           
+        println!("Opening database in read-only mode...");
+
+        let cf1 = db.cf_handle("cf1").unwrap();
+
+        let mut readopts = ReadOptions::default();
+        readopts.set_verify_checksums(true);
+        println!("Read options configured with checksum verification.");
+
+        let range_result = db
+            .get_external_range_query(cf1, b"k2", b"k5", &readopts)
+            .unwrap();
+
+        match range_result {
+            Some(values) => {
+                println!("Number of elements returned: {}", values.len());
+                let expected_values = vec![b"v2", b"v3", b"v4", b"v5"];
+                assert_eq!(values.len(), expected_values.len(), "Mismatch in value count");
+
+                for (i, value) in values.iter().enumerate() {
+                    println!("Debug: Checking value at index {}", i);
+
+                    let raw_value = value.as_ref();
+                    println!("Raw value at index {}: {:?}", i, raw_value);
+
+                    let value_str = value.to_utf8().unwrap_or_else(|| panic!("Invalid UTF-8 value at index {}", i));
+                    let expected_str = std::str::from_utf8(expected_values[i]).unwrap();
+
+                    println!("Value {}: Got '{}', Expected '{}'", i + 1, value_str, expected_str);
+                    assert_eq!(value_str, expected_str, "Value mismatch at index {}", i);
+                }
+            }
+            None => {
+                println!("Range query returned no values.");
+                panic!("Expected range to return values, but got None");
+            }
         }
     }
 
