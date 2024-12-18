@@ -130,6 +130,7 @@ typedef struct crocksdb_sstfilewriter_t crocksdb_sstfilewriter_t;
 typedef struct crocksdb_externalsstfileinfo_t crocksdb_externalsstfileinfo_t;
 typedef struct crocksdb_ratelimiter_t crocksdb_ratelimiter_t;
 typedef struct crocksdb_pinnableslice_t crocksdb_pinnableslice_t;
+typedef struct crocksdb_pinnableslice_kv_t crocksdb_pinnableslice_kv_t;
 typedef struct crocksdb_user_collected_properties_t
     crocksdb_user_collected_properties_t;
 typedef struct crocksdb_user_collected_properties_iterator_t
@@ -465,6 +466,11 @@ extern C_ROCKSDB_LIBRARY_API crocksdb_pinnableslice_t** crocksdb_get_external_ra
     crocksdb_column_family_handle_t* column_families,
     const char* start_key, size_t start_keylen, const char* end_key,
     size_t end_keylen, size_t *num_elements, char** errs);
+
+extern C_ROCKSDB_LIBRARY_API crocksdb_pinnableslice_kv_t** crocksdb_get_external_range_query_kv(
+    crocksdb_t* db, const crocksdb_readoptions_t* options,
+    crocksdb_column_family_handle_t* column_family,
+    const char* start_key, size_t start_keylen, size_t count, size_t *num_elements, char** errs);
 
 extern C_ROCKSDB_LIBRARY_API crocksdb_iterator_t* crocksdb_create_iterator(
     crocksdb_t* db, const crocksdb_readoptions_t* options);

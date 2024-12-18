@@ -353,6 +353,10 @@ struct crocksdb_histogramdata_t {
 struct crocksdb_pinnableslice_t {
   PinnableSlice rep;
 };
+struct crocksdb_pinnableslice_kv_t {
+  Slice key;
+  PinnableSlice rep;
+};
 struct crocksdb_flushjobinfo_t {
   FlushJobInfo rep;
 };
@@ -1365,6 +1369,46 @@ crocksdb_pinnableslice_t** crocksdb_get_external_range_query(
     }
 
     return values; 
+}
+
+crocksdb_pinnableslice_kv_t** crocksdb_get_external_range_query_kv(
+    crocksdb_t* db, const crocksdb_readoptions_t* options,
+    crocksdb_column_family_handle_t* column_family,
+    const char* start_key, size_t start_keylen, size_t count, size_t *num_elements, char** errs) { 
+
+    std::vector<std::pair<Slice,PinnableSlice*>> kv_pair_vec;
+    crocksdb_pinnableslice_kv_t** kv_pair;
+
+    Status s = db->rep->GetExternalRangeQueryPair(options->rep, column_family->rep, Slice(start_key, start_keylen), count, kv_pair_vec);
+  
+    //TODO : Vectorize status 
+    if (!s.ok()) {
+      for(auto v : kv_pair_vec){
+        delete(v.second);
+      }
+
+      if (!s.IsNotFound()) {
+        SaveError(errs, s);
+      }
+      return nullptr;
+    } 
+
+    kv_pair = new crocksdb_pinnableslice_kv_t*[kv_pair_vec.size()];
+    *num_elements = kv_pair_vec.size();
+
+    for (size_t i = 0; i < kv_pair_vec.size(); i++) {
+      crocksdb_pinnableslice_kv_t* v = new (crocksdb_pinnableslice_kv_t);
+      // v->rep = *values_vec[i];
+      // values[i] = v;
+      // new (&v->rep) PinnableSlice(std::move(*kv_pair_vec[i]));  // Ensure this doesn't call the deleted copy assignment operator
+      v->key = std::move(kv_pair_vec[i].first);
+      v->rep = std::move(*(kv_pair_vec[i].second));
+      kv_pair[i] = v;
+      // values_vec[i]->~PinnableSlice();
+      delete kv_pair_vec[i].second;
+    }
+
+    return kv_pair; 
 }
 
 crocksdb_iterator_t* crocksdb_create_iterator(
